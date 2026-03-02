@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StockPicker AI – Najlepsze Akcje Dnia</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0a0e1a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      border-bottom: 1px solid #1e3a5f;
+      padding: 16px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 800;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-badge {
+      background: #1e3a5f;
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .api-input {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      width: 220px;
+      outline: none;
+    }
+    .api-input:focus { border-color: #38bdf8; }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      color: white;
+    }
+    .btn-primary:hover { opacity: 0.85; transform: scale(1.02); }
+
+    .btn-secondary {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+    }
+    .btn-secondary:hover { background: #273447; color: #e2e8f0; }
+
+    .refresh-info {
+      color: #64748b;
+      font-size: 12px;
+      text-align: right;
+    }
+
+    /* CONTAINER */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    /* MARKET SUMMARY */
+    .market-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .market-card {
+      background: #111827;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 14px 16px;
+      transition: border-color 0.2s;
+    }
+    .market-card:hover { border-color: #334155; }
+
+    .market-name { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+    .market-value { font-size: 20px; font-weight: 700; }
+    .market-change { font-size: 13px; font-weight: 600; margin-top: 2px; }
+    .up { color: #22c55e; }
+    .down { color: #ef4444; }
+
+    /* SECTION TITLE */
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* TOP 3 */
+    .top3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+
+    .top-card {
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .top-card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+
+    .top-card.gold {
+      background: linear-gradient(135deg, #1a1200 0%, #2d1f00 100%);
+      border: 2px solid #f59e0b;
+    }
+    .top-card.silver {
+      background: linear-gradient(135deg, #0f1520 0%, #1a2535 100%);
+      border: 2px solid #94a3b8;
+    }
+    .top-card.bronze {
+      background: linear-gradient(135deg, #1a0f0a 0%, #2d1a12 100%);
+      border: 2px solid #cd7c2e;
+    }
+
+    .medal {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .top-symbol {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    .top-name { font-size: 13px; color: #94a3b8; margin-bottom: 12px; }
+
+    .top-price {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .top-change {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .score-bar-wrap {
+      margin-top: 10px;
+    }
+
+    .score-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 5px;
+    }
+
+    .score-bar {
+      height: 8px;
+      background: #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #22c55e, #86efac);
+      transition: width 1s ease;
+    }
+
+    .rec-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-top: 10px;
+    }
+    .rec-STRONG-BUY { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
+    .rec-BUY { background: #052e16; color: #4ade80; border: 1px solid #16a34a; }
+    .rec-HOLD { background: #1c1917; color: #fbbf24; border: 1px solid #d97706; }
+    .rec-SELL { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
+
+    /* FILTERS */
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .filter-label { font-size: 13px; color: #64748b; }
+
+    .filter-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid #334155;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: #1e3a5f;
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    select.sort-select {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #94a3b8;
+      font-size: 12px;
+      cursor: pointer;
+      outline: none;
+    }
+    select.sort-select:focus { border-color: #38bdf8; }
+
+    /* STOCK TABLE */
+    .stock-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .stock-row {
+      background: #111827;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 60px 1fr 110px 110px 100px 130px 120px;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .stock-row:hover {
+      border-color: #334155;
+      background: #141e2e;
+      transform: translateX(2px);
+    }
+
+    .stock-rank {
+      font-size: 18px;
+      font-weight: 800;
+      color: #334155;
+      text-align: center;
+    }
+
+    .stock-info .symbol {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .stock-info .name {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .stock-price {
+      font-size: 17px;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .stock-change {
+      font-size: 14px;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .stock-volume {
+      font-size: 12px;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    .score-mini {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .score-number {
+      font-size: 16px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .score-bar-mini {
+      height: 5px;
+      background: #1e293b;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .score-fill-mini {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #22c55e, #86efac);
+    }
+
+    .rec-col { text-align: center; }
+
+    /* CHART MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: #111827;
+      border: 1px solid #1e3a5f;
+      border-radius: 20px;
+      padding: 28px;
+      width: 90%;
+      max-width: 640px;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: #1e293b;
+      border: none;
+      color: #94a3b8;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-close:hover { background: #334155; color: white; }
+
+    .modal-title {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .modal-sub {
+      color: #64748b;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
+    canvas {
+      width: 100% !important;
+      border-radius: 8px;
+    }
+
+    .modal-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .stat-box {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat-label { font-size: 11px; color: #64748b; margin-bottom: 4px; }
+    .stat-value { font-size: 16px; font-weight: 700; }
+
+    /* LOADING */
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid #1e293b;
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text { color: #64748b; font-size: 15px; }
+
+    /* ERROR */
+    .error-box {
+      background: #1a0a0a;
+      border: 1px solid #ef4444;
+      border-radius: 12px;
+      padding: 20px;
+      color: #fca5a5;
+      text-align: center;
+      margin: 20px 0;
+      font-size: 14px;
+    }
+
+    /* FOOTER */
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: #334155;
+      font-size: 12px;
+      border-top: 1px solid #1e293b;
+      margin-top: 40px;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      .stock-row {
+        grid-template-columns: 40px 1fr 90px 90px;
+        grid-template-rows: auto auto;
+      }
+      .stock-volume, .score-mini, .rec-col { display: none; }
+    }
+
+    @media (max-width: 600px) {
+      .logo { font-size: 18px; }
+      .api-input { width: 160px; }
+      .top-price { font-size: 22px; }
+      .stock-row {
+        grid-template-columns: 36px 1fr 80px 80px;
+      }
+      .modal { padding: 20px 16px; }
+      .modal-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* STATUS DOT */
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* TABLE HEADER */
+    .table-header {
+      display: grid;
+      grid-template-columns: 60px 1fr 110px 110px 100px 130px 120px;
+      gap: 12px;
+      padding: 8px 20px;
+      font-size: 11px;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 900px) {
+      .table-header { display: none; }
+    }
+
+    /* (Tryb demo usunięty) */
+
+    .last-update {
+      font-size: 11px;
+      color: #475569;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <div class="logo">📈 StockPicker AI</div>
+    <div class="header-badge">LIVE</div>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-secondary" id="marketBtn" onclick="toggleMarket()">🇵🇱 GPW</button>
+    <div>
+      <!-- Klucz API ustawiony na stałe w kodzie (nie pokazujemy pola wpisywania) -->
+      <div class="last-update" id="lastUpdate">Ostatnia aktualizacja: —</div>
+    </div>
+    <button class="btn btn-primary" onclick="fetchAllStocks()">🔄 Odśwież</button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="container">
+
+  <!-- (Tryb demo usunięty) -->
+
+  <!-- MARKET SUMMARY -->
+  <div class="market-bar" id="marketBar">
+    <div class="market-card"><div class="market-name">S&P 500</div><div class="market-value" id="sp500">—</div><div class="market-change" id="sp500c">—</div></div>
+    <div class="market-card"><div class="market-name">NASDAQ</div><div class="market-value" id="nasdaq">—</div><div class="market-change" id="nasdaqc">—</div></div>
+    <div class="market-card"><div class="market-name">DOW JONES</div><div class="market-value" id="dow">—</div><div class="market-change" id="dowc">—</div></div>
+    <div class="market-card"><div class="market-name">VIX (Strach)</div><div class="market-value" id="vix">—</div><div class="market-change" id="vixc">—</div></div>
+    <div class="market-card"><div class="market-name">BTC/USD</div><div class="market-value" id="btc">—</div><div class="market-change" id="btcc">—</div></div>
+  </div>
+
+  <!-- TOP 3 -->
+  <div class="section-title">🏆 TOP 3 Najlepsze Akcje Dnia</div>
+  <div class="top3" id="top3Container">
+    <div class="loading"><div class="spinner"></div><div class="loading-text">Analizuję rynek...</div></div>
+  </div>
+
+  <!-- ALL STOCKS -->
+  <div class="section-title" style="margin-top:12px;">
+    <span><span class="status-dot"></span>Wszystkie Akcje</span>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filters">
+    <span class="filter-label">Filtr:</span>
+    <button class="filter-btn active" onclick="setFilter('ALL', this)">Wszystkie</button>
+    <button class="filter-btn" onclick="setFilter('BUY', this)">🟢 Kupno</button>
+    <button class="filter-btn" onclick="setFilter('HOLD', this)">🟡 Trzymaj</button>
+    <button class="filter-btn" onclick="setFilter('SELL', this)">🔴 Sprzedaj</button>
+    <span class="filter-label" style="margin-left:10px;">Sortuj:</span>
+    <select class="sort-select" id="sortSelect" onchange="renderStocks()">
+      <option value="score">Score AI ↓</option>
+      <option value="change">Zmiana % ↓</option>
+      <option value="price">Cena ↓</option>
+      <option value="volume">Wolumen ↓</option>
+    </select>
+  </div>
+
+  <!-- TABLE HEADER -->
+  <div class="table-header">
+    <div>Rank</div>
+    <div>Spółka</div>
+    <div style="text-align:right">Cena</div>
+    <div style="text-align:right">Zmiana %</div>
+    <div style="text-align:center">Wolumen</div>
+    <div style="text-align:center">Score AI</div>
+    <div style="text-align:center">Rekomendacja</div>
+  </div>
+
+  <!-- STOCK LIST -->
+  <div class="stock-grid" id="stockGrid">
+    <div class="loading"><div class="spinner"></div><div class="loading-text">Ładowanie danych...</div></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="hideModal()">✕</button>
+    <div class="modal-title" id="modalTitle">—</div>
+    <div class="modal-sub" id="modalSub">—</div>
+    <canvas id="chartCanvas" height="200"></canvas>
+    <div class="modal-stats" id="modalStats"></div>
+  </div>
+</div>
+
+<footer>
+  📈 StockPicker AI &nbsp;|&nbsp; Dane: Alpha Vantage (demo) &nbsp;|&nbsp;
+  ⚠️ Nie jest to porada inwestycyjna. Inwestuj odpowiedzialnie.
+</footer>
+
+<script>
+// ============================================================
+// KONFIGURACJA
+// ============================================================
+// Możesz przełączać zestaw obserwowanych spółek (USA / Polska - GPW).
+// Uwaga: w Alpha Vantage symbole GPW zwykle mają sufiks ".WSE".
+const STOCK_SETS = {
+  USA: [
+    { symbol: 'AAPL',  name: 'Apple Inc.',           sector: 'Tech' },
+    { symbol: 'MSFT',  name: 'Microsoft Corp.',      sector: 'Tech' },
+    { symbol: 'NVDA',  name: 'NVIDIA Corp.',         sector: 'Tech' },
+    { symbol: 'GOOGL', name: 'Alphabet Inc.',        sector: 'Tech' },
+    { symbol: 'AMZN',  name: 'Amazon.com Inc.',      sector: 'Consumer' },
+    { symbol: 'META',  name: 'Meta Platforms',       sector: 'Tech' },
+    { symbol: 'TSLA',  name: 'Tesla Inc.',           sector: 'Automotive' },
+    { symbol: 'JPM',   name: 'JPMorgan Chase',       sector: 'Finance' },
+    { symbol: 'V',     name: 'Visa Inc.',            sector: 'Finance' },
+    { symbol: 'JNJ',   name: 'Johnson & Johnson',    sector: 'Healthcare' },
+    { symbol: 'WMT',   name: 'Walmart Inc.',         sector: 'Retail' },
+    { symbol: 'PG',    name: 'Procter & Gamble',     sector: 'Consumer' },
+    { symbol: 'XOM',   name: 'Exxon Mobil',          sector: 'Energy' },
+    { symbol: 'UNH',   name: 'UnitedHealth Group',   sector: 'Healthcare' },
+  ],
+  // Przykładowe spółki z GPW (WSE). Jeśli jakaś nie zwróci danych z API,
+  // aplikacja automatycznie pokaże dane DEMO.
+  PL: [
+    { symbol: 'PKN.WSE',  name: 'Orlen',                 sector: 'Energy' },
+    { symbol: 'PKO.WSE',  name: 'PKO BP',                sector: 'Finance' },
+    { symbol: 'PEO.WSE',  name: 'Bank Pekao',            sector: 'Finance' },
+    { symbol: 'PZU.WSE',  name: 'PZU',                   sector: 'Insurance' },
+    { symbol: 'KGH.WSE',  name: 'KGHM',                  sector: 'Materials' },
+    { symbol: 'CDR.WSE',  name: 'CD Projekt',            sector: 'Tech/Games' },
+    { symbol: 'DNP.WSE',  name: 'Dino Polska',           sector: 'Retail' },
+    { symbol: 'LPP.WSE',  name: 'LPP',                   sector: 'Consumer' },
+    { symbol: 'ALE.WSE',  name: 'Allegro',               sector: 'E-commerce' },
+    { symbol: 'MBK.WSE',  name: 'mBank',                 sector: 'Finance' },
+    { symbol: 'SPL.WSE',  name: 'Santander Bank Polska', sector: 'Finance' },
+    { symbol: 'OPL.WSE',  name: 'Orange Polska',         sector: 'Telecom' },
+  ]
+};
+
+let currentMarket = 'PL';
+let STOCKS = STOCK_SETS[currentMarket];
+
+const BASE_PRICES = {
+  // USA
+  AAPL: 189, MSFT: 415, NVDA: 875, GOOGL: 175, AMZN: 195,
+  META: 520, TSLA: 175, JPM: 205, V: 280, JNJ: 155,
+  WMT: 68, PG: 168, XOM: 118, UNH: 545,
+  // Polska (wartości orientacyjne; dla GPW w API mogą przyjść ceny w PLN)
+  'PKN.WSE': 70,
+  'PKO.WSE': 60,
+  'PEO.WSE': 160,
+  'PZU.WSE': 45,
+  'KGH.WSE': 130,
+  'CDR.WSE': 120,
+  'DNP.WSE': 380,
+  'LPP.WSE': 15000,
+  'ALE.WSE': 35,
+  'MBK.WSE': 650,
+  'SPL.WSE': 520,
+  'OPL.WSE': 8
+};
+
+let stockData = [];
+let currentFilter = 'ALL';
+let selectedStock = null;
+let chartInstance = null;
+let refreshTimer = null;
+let countdown = 900;
+
+// ============================================================
+// GENEROWANIE DANYCH DEMO
+// ============================================================
+function generateDemoData(symbol) {
+  const base = BASE_PRICES[symbol] || 100;
+  const seed = symbol.charCodeAt(0) + new Date().getDate();
+  const rng = (s) => ((Math.sin(s) * 9301 + 49297) % 233280) / 233280;
+
+  const change = (rng(seed) - 0.42) * 8;
+  const price = base * (1 + change / 100);
+  const open = price / (1 + (rng(seed + 1) - 0.5) * 0.02);
+  const high = price * (1 + rng(seed + 2) * 0.015);
+  const low = price * (1 - rng(seed + 3) * 0.015);
+  const volume = Math.floor(rng(seed + 4) * 80000000 + 5000000);
+
+  // Historia 30 dni
+  const history = [];
+  let p = base * (1 - 0.05);
+  for (let i = 30; i >= 0; i--) {
+    p *= 1 + (rng(seed + i * 7) - 0.48) * 0.025;
+    history.push(parseFloat(p.toFixed(2)));
+  }
+
+  return { symbol, price, open, high, low, change, volume, history };
+}
+
+// ============================================================
+// POBIERANIE DANYCH Z API (Alpha Vantage)
+// ============================================================
+async function fetchStockAPI(symbol, apiKey) {
+  const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  const q = json['Global Quote'];
+  if (!q || !q['05. price']) return null;
+
+  const price = parseFloat(q['05. price']);
+  const open  = parseFloat(q['02. open']);
+  const high  = parseFloat(q['03. high']);
+  const low   = parseFloat(q['04. low']);
+  const change = parseFloat(q['10. change percent'].replace('%', ''));
+  const volume = parseInt(q['06. volume']);
+
+  // Historia
+  const url2 = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=compact&apikey=${apiKey}`;
+  const res2 = await fetch(url2);
+  const json2 = await res2.json();
+  const ts = json2['Time Series (Daily)'];
+  const history = ts ? Object.values(ts).slice(0, 30).reverse().map(d => parseFloat(d['4. close'])) : [];
+
+  return { symbol, price, open, high, low, change, volume, history };
+}
+
+// ============================================================
+// ALGORYTM SCORINGU AI
+// ============================================================
+function calcScore(d) {
+  let score = 50;
+
+  // 1. Momentum (zmiana %)
+  if (d.change > 3) score += 20;
+  else if (d.change > 1.5) score += 14;
+  else if (d.change > 0.5) score += 8;
+  else if (d.change > 0) score += 3;
+  else if (d.change < -3) score -= 20;
+  else if (d.change < -1.5) score -= 14;
+  else if (d.change < -0.5) score -= 8;
+  else score -= 3;
+
+  // 2. Pozycja vs zakres dnia
+  const range = d.high - d.low;
+  if (range > 0) {
+    const pos = (d.price - d.low) / range;
+    score += (pos - 0.5) * 16;
+  }
+
+  // 3. Gap od otwarcia
+  const gap = ((d.price - d.open) / d.open) * 100;
+  score += gap * 2.5;
+
+  // 4. Trend 5-dniowy
+  if (d.history && d.history.length >= 5) {
+    const last5 = d.history.slice(-5);
+    const trend = (last5[4] - last5[0]) / last5[0] * 100;
+    score += trend * 1.2;
+  }
+
+  // 5. Wolumen
+  if (d.volume > 50000000) score += 6;
+  else if (d.volume > 20000000) score += 3;
+
+  return Math.min(100, Math.max(0, Math.round(score)));
+}
+
+function getRecommendation(score) {
+  if (score >= 75) return 'STRONG BUY';
+  if (score >= 60) return 'BUY';
+  if (score >= 40) return 'HOLD';
+  return 'SELL';
+}
+
+function getScoreColor(score) {
+  if (score >= 70) return '#22c55e';
+  if (score >= 50) return '#f59e0b';
+  return '#ef4444';
+}
+
+// ============================================================
+// GŁÓWNA FUNKCJA ŁADOWANIA
+// ============================================================
+function updateMarketButton() {
+  const btn = document.getElementById('marketBtn');
+  if (!btn) return;
+  btn.textContent = currentMarket === 'PL' ? '🇵🇱 GPW' : '🇺🇸 USA';
+}
+
+function toggleMarket() {
+  currentMarket = currentMarket === 'PL' ? 'USA' : 'PL';
+  STOCKS = STOCK_SETS[currentMarket];
+  updateMarketButton();
+  fetchAllStocks();
+}
+
+// Stały klucz API (Alpha Vantage)
+const API_KEY = 'ZW3FB3MU020LJ7LK';
+
+async function fetchAllStocks() {
+  const apiKey = API_KEY;
+  const useAPI = true;
+  document.getElementById('top3Container').innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Analizuję rynek AI...</div></div>';
+  document.getElementById('stockGrid').innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Pobieranie danych...</div></div>';
+
+  stockData = [];
+
+  try {
+    for (const s of STOCKS) {
+      let data = null;
+      if (useAPI) {
+        data = await fetchStockAPI(s.symbol, apiKey);
+        await new Promise(r => setTimeout(r, 300)); // rate limit
+      }
+      if (!data) {
+        throw new Error(`Brak danych z API dla symbolu: ${s.symbol}`);
+      }
+      data.name = s.name;
+      data.sector = s.sector;
+      data.score = calcScore(data);
+      data.recommendation = getRecommendation(data.score);
+      stockData.push(data);
+    }
+
+    // Sortuj po score domyślnie
+    stockData.sort((a, b) => b.score - a.score);
+    stockData.forEach((d, i) => d.rank = i + 1);
+
+    renderMarket();
+    renderTop3();
+    renderStocks();
+    startRefreshTimer();
+
+    const now = new Date();
+    document.getElementById('lastUpdate').textContent =
+      `Ostatnia aktualizacja: ${now.toLocaleDateString('pl-PL')} ${now.toLocaleTimeString('pl-PL')}`;
+  } catch (err) {
+    console.error(err);
+    document.getElementById('top3Container').innerHTML = `<div class="error-box">Nie udało się pobrać danych z API (Alpha Vantage).<br/>Sprawdź limit zapytań albo dostępność symboli i odśwież stronę.</div>`;
+    document.getElementById('stockGrid').innerHTML = `<div class="error-box">Błąd pobierania: ${String(err.message || err)}</div>`;
+  }
+}
+
+// ============================================================
+// RENDER – RYNEK
+// ============================================================
+function renderMarket() {
+  const items = [
+    { el: 'sp500',  ec: 'sp500c',  val: '5,842',   ch: '+0.41%', up: true },
+    { el: 'nasdaq', ec: 'nasdaqc', val: '18,680',  ch: '+0.67%', up: true },
+    { el: 'dow',    ec: 'dowc',    val: '43,250',  ch: '+0.23%', up: true },
+    { el: 'vix',    ec: 'vixc',    val: '14.82',   ch: '-3.1%',  up: false },
+    { el: 'btc',    ec: 'btcc',    val: '$97,420', ch: '+2.14%', up: true },
+  ];
+  items.forEach(i => {
+    document.getElementById(i.el).textContent = i.val;
+    const el = document.getElementById(i.ec);
+    el.textContent = i.ch;
+    el.className = 'market-change ' + (i.up ? 'up' : 'down');
+  });
+}
+
+// ============================================================
+// RENDER – TOP 3
+// ============================================================
+function renderTop3() {
+  const top = stockData.slice(0, 3);
+  const medals = ['gold', 'silver', 'bronze'];
+  const icons = ['🥇', '🥈', '🥉'];
+
+  document.getElementById('top3Container').innerHTML = top.map((d, i) => `
+    <div class="top-card ${medals[i]}" onclick="openModal('${d.symbol}')">
+      <div class="medal">${icons[i]}</div>
+      <div class="top-symbol">${d.symbol}</div>
+      <div class="top-name">${d.name}</div>
+      <div class="top-price" style="color:${d.change >= 0 ? '#22c55e' : '#ef4444'}">
+        ${fmtCurrency(d.symbol, d.price)}
+      </div>
+      <div class="top-change ${d.change >= 0 ? 'up' : 'down'}">
+        ${d.change >= 0 ? '▲' : '▼'} ${Math.abs(d.change).toFixed(2)}%
+      </div>
+      <span class="rec-badge rec-${d.recommendation.replace(' ', '-')}">${d.recommendation}</span>
+      <div class="score-bar-wrap">
+        <div class="score-label">
+          <span>Score AI</span>
+          <span style="color:${getScoreColor(d.score)}">${d.score}/100</span>
+        </div>
+        <div class="score-bar">
+          <div class="score-fill" style="width:${d.score}%; background: linear-gradient(90deg, ${getScoreColor(d.score)}, #86efac)"></div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// RENDER – LISTA AKCJI
+// ============================================================
+function renderStocks() {
+  const sort = document.getElementById('sortSelect').value;
+  let data = [...stockData];
+
+  // Filtr
+  if (currentFilter === 'BUY') data = data.filter(d => d.recommendation.includes('BUY'));
+  if (currentFilter === 'HOLD') data = data.filter(d => d.recommendation === 'HOLD');
+  if (currentFilter === 'SELL') data = data.filter(d => d.recommendation === 'SELL');
+
+  // Sortowanie
+  if (sort === 'score') data.sort((a, b) => b.score - a.score);
+  if (sort === 'change') data.sort((a, b) => b.change - a.change);
+  if (sort === 'price') data.sort((a, b) => b.price - a.price);
+  if (sort === 'volume') data.sort((a, b) => b.volume - a.volume);
+
+  if (data.length === 0) {
+    document.getElementById('stockGrid').innerHTML = `<div style="text-align:center;color:#64748b;padding:40px">Brak akcji spełniających kryteria</div>`;
+    return;
+  }
+
+  document.getElementById('stockGrid').innerHTML = data.map((d, i) => `
+    <div class="stock-row" onclick="openModal('${d.symbol}')">
+      <div class="stock-rank" style="color:${i < 3 ? '#f59e0b' : '#334155'}">#${d.rank}</div>
+      <div class="stock-info">
+        <div class="symbol">${d.symbol}</div>
+        <div class="name">${d.name}</div>
+      </div>
+      <div class="stock-price" style="color:${d.change >= 0 ? '#22c55e' : '#ef4444'}">
+        ${fmtCurrency(d.symbol, d.price)}
+      </div>
+      <div class="stock-change ${d.change >= 0 ? 'up' : 'down'}">
+        ${d.change >= 0 ? '▲' : '▼'} ${Math.abs(d.change).toFixed(2)}%
+      </div>
+      <div class="stock-volume">${(d.volume / 1e6).toFixed(1)}M</div>
+      <div class="score-mini">
+        <div class="score-number" style="color:${getScoreColor(d.score)}">${d.score}</div>
+        <div class="score-bar-mini">
+          <div class="score-fill-mini" style="width:${d.score}%; background:${getScoreColor(d.score)}"></div>
+        </div>
+      </div>
+      <div class="rec-col">
+        <span class="rec-badge rec-${d.recommendation.replace(' ', '-')}">${d.recommendation}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// FILTR
+// ============================================================
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderStocks();
+}
+
+// ============================================================
+// MODAL + WYKRES
+// ============================================================
+function isPolishSymbol(symbol) {
+  return symbol.endsWith('.WSE');
+}
+
+function fmtCurrency(symbol, value) {
+  const isPL = isPolishSymbol(symbol);
+  const cur = isPL ? 'PLN' : 'USD';
+  try {
+    return new Intl.NumberFormat('pl-PL', { style: 'currency', currency: cur, maximumFractionDigits: isPL ? 2 : 2 }).format(value);
+  } catch {
+    return (isPL ? 'zł ' : '$') + value.toFixed(2);
+  }
+}
+
+function openModal(symbol) {
+  const d = stockData.find(s => s.symbol === symbol);
+  if (!d) return;
+  selectedStock = d;
+
+  document.getElementById('modalTitle').textContent = `${d.symbol} – ${d.name}`;
+  document.getElementById('modalSub').textContent =
+    `Sektor: ${d.sector} &nbsp;|&nbsp; Score AI: ${d.score}/100 &nbsp;|&nbsp; ${d.recommendation}`;
+
+  document.getElementById('modalStats').innerHTML = `
+    <div class="stat-box"><div class="stat-label">Cena</div><div class="stat-value" style="color:${d.change>=0?'#22c55e':'#ef4444'}">${fmtCurrency(d.symbol, d.price)}</div></div>
+    <div class="stat-box"><div class="stat-label">Zmiana</div><div class="stat-value ${d.change>=0?'up':'down'}">${d.change>=0?'+':''}${d.change.toFixed(2)}%</div></div>
+    <div class="stat-box"><div class="stat-label">Otwarcie</div><div class="stat-value">${fmtCurrency(d.symbol, d.open)}</div></div>
+    <div class="stat-box"><div class="stat-label">Najwyżej</div><div class="stat-value up">${fmtCurrency(d.symbol, d.high)}</div></div>
+    <div class="stat-box"><div class="stat-label">Najniżej</div><div class="stat-value down">${fmtCurrency(d.symbol, d.low)}</div></div>
+    <div class="stat-box"><div class="stat-label">Wolumen</div><div class="stat-value">${(d.volume/1e6).toFixed(1)}M</div></div>
+  `;
+
+  document.getElementById('modalOverlay').classList.add('show');
+  drawChart(d);
+}
+
+function drawChart(d) {
+  const canvas = document.getElementById('chartCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth || 580;
+  canvas.height = 200;
+
+  const data = d.history;
+  if (!data || data.length < 2) return;
+
+  const w = canvas.width;
+  const h = canvas.height;
+  const pad = { top: 16, right: 16, bottom: 28, left: 52 };
+  const cw = w - pad.left - pad.right;
+  const ch = h - pad.top - pad.bottom;
+
+  const min = Math.min(...data) * 0.998;
+  const max = Math.max(...data) * 1.002;
+  const range = max - min;
+
+  const px = (i) => pad.left + (i / (data.length - 1)) * cw;
+  const py = (v) => pad.top + ch - ((v - min) / range) * ch;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (i / 4) * ch;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+    const val = max - (i / 4) * range;
+    ctx.fillStyle = '#475569';
+    ctx.font = '10px Segoe UI';
+    ctx.textAlign = 'right';
+    // Dla GPW pokazujemy "zł", dla USA "$" (uproszczone)
+    const prefix = isPolishSymbol(d.symbol) ? 'zł ' : '$';
+    ctx.fillText(prefix + val.toFixed(0), pad.left - 4, y + 3);
+  }
+
+  // X labels
+  ctx.fillStyle = '#475569';
+  ctx.font = '9px Segoe UI';
+  ctx.textAlign = 'center';
+  const labels = ['-30d', '-25d', '-20d', '-15d', '-10d', '-5d', 'Dziś'];
+  labels.forEach((l, i) => {
+    const idx = Math.round((i / (labels.length - 1)) * (data.length - 1));
+    ctx.fillText(l, px(idx), h - 6);
+  });
+
+  // Gradient fill
+  const grad = ctx.createLinearGradient(0, pad.top, 0, h - pad.bottom);
+  const isUp = data[data.length - 1] >= data[0];
+  grad.addColorStop(0, isUp ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+  ctx.beginPath();
+  ctx.moveTo(px(0), py(data[0]));
+  data.forEach((v, i) => { if (i > 0) ctx.lineTo(px(i), py(v)); });
+  ctx.lineTo(px(data.length - 1), h - pad.bottom);
+  ctx.lineTo(px(0), h - pad.bottom);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(px(0), py(data[0]));
+  data.forEach((v, i) => { if (i > 0) ctx.lineTo(px(i), py(v)); });
+  ctx.strokeStyle = isUp ? '#22c55e' : '#ef4444';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Last dot
+  const lx = px(data.length - 1);
+  const ly = py(data[data.length - 1]);
+  ctx.beginPath();
+  ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+  ctx.fillStyle = isUp ? '#22c55e' : '#ef4444';
+  ctx.fill();
+}
+
+function hideModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) hideModal();
+}
+
+// ============================================================
+// AUTO-ODŚWIEŻANIE
+// ============================================================
+function startRefreshTimer() {
+  clearInterval(refreshTimer);
+  countdown = 900;
+  refreshTimer = setInterval(() => {
+    countdown--;
+    const m = Math.floor(countdown / 60);
+    const s = countdown % 60;
+    document.querySelector('.header-badge').textContent =
+      `LIVE ${m}:${s.toString().padStart(2,'0')}`;
+    if (countdown <= 0) fetchAllStocks();
+  }, 1000);
+}
+
+// ============================================================
+// START
+// ============================================================
+window.onload = () => {
+  updateMarketButton();
+  fetchAllStocks();
+};
+</script>
+</body>
+</html>
